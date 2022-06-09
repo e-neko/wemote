@@ -10,7 +10,7 @@
 #define ENC_PIN_CLK (uint16_t)12 //d6
 #define ENC_PIN_DAT (uint16_t)13 //d7
 #define ENC_PIN_SW  15 //d8
-
+#define SW_HELPER   14 //d5
 #define OLED_RESET -1
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 volatile int rotary_pos = 0;
@@ -64,6 +64,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_PIN_CLK), DecoderISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_PIN_DAT), DecoderISR, CHANGE);
   pinMode(ENC_PIN_SW, INPUT_PULLUP);
+  pinMode(SW_HELPER, OUTPUT);
+  digitalWrite(SW_HELPER, HIGH);
   attachInterrupt(digitalPinToInterrupt(ENC_PIN_SW), ButtonISR, FALLING);
 }
 
