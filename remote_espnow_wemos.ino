@@ -12,7 +12,9 @@
 #define ENC_PIN_SW  15 //d8
 #define SW_HELPER   14 //d5
 #define OLED_RESET -1
+
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+
 volatile int rotary_pos = 0;
 volatile int click_count = 0;
 int previous_pos = 0;
@@ -37,6 +39,93 @@ ICACHE_RAM_ATTR void ButtonISR(void) {
   }
   return;
 }
+
+/* ---- menu system --- */
+String getMenuEntry(uint8_t index) {
+  
+}
+typedef enum: uint8_t {
+  ET_CHOICE = 0x00u,
+  ET_INFO = 0x01u,
+  ET_VERB = 0x02u,
+  ET_SELECT = 0x04u,
+  ET_COMMAND = 0x08u,
+  ET_FIELD = 0x10u,
+  ET_SUBMENU = 0x20u,
+  ET_FORM = 0x40u
+} ENTRY_TYPE;
+
+class MenuEntry
+{
+  public:
+    ~MenuEntry() =default;
+    MenuEntry() =delete;
+    MenuEntry(const MenuEntry&) =delete;
+    MenuEntry& operator=(const MenuEntry&) =delete;
+  public:
+    MenuEntry(uint8_t i, ENTRY_TYPE t, String c);
+    MenuEntry(uint8_t i, ENTRY_TYPE t, String c, uint8_t *subit, uint8_t subcnt); 
+    MenuEntry(String &entry);
+  public:
+    String Entry();
+    String Caption();
+  private:
+    uint8_t index;
+    ENTRY_TYPE kind;
+    String caption;
+    uint8_t *subitems;
+    uint8_t subcount;  
+};
+
+MenuEntry *MenuEntries[256] = {0};
+/* ---- helpers ---- */
+String getMenuString(uint8_t idx){
+  if (idx==0)
+    return("0,Main Menu,32,1,2,3,4");
+  if (idx==1)
+    return("1,Hello,0");
+  if (idx==2)
+    return("2,world,0");
+  if (idx==3)
+    return("3,ok,8");
+  if (idx==4)
+    return("4,cancel,8");
+  return "";
+};
+
+/* ---- impl ---- */
+MenuEntry::MenuEntry(uint8_t i, ENTRY_TYPE t, String c):index(i), kind(t), caption(c), subitems(0), subcount(0) {
+}
+
+MenuEntry::MenuEntry(uint8_t i, ENTRY_TYPE t, String c, uint8_t *subit, uint8_t subcnt):index(i), kind(t), caption(c), subitems(subit), subcount(subcnt) {
+}
+MenuEntry::MenuEntry(String &entry): index(0), kind(ET_CHOICE), caption("blah"), subitems(0), subcount(0){
+  //todo
+}
+String MenuEntry::Caption() {
+  return this->caption;
+}
+String MenuEntry::Entry() {
+  return String("bah");
+}
+/* ---- helpers ---- */
+MenuEntry * getEntry(uint8_t idx); //arduino needs prototypes or else it creates it in the wrong places!
+
+MenuEntry * getEntry(uint8_t idx) {
+  if (MenuEntries[idx])
+    return MenuEntries[idx];
+  else {
+    String menuString = getMenuString(idx);
+    MenuEntry *newEntry = menuString ? new MenuEntry(menuString) : NULL;
+    if (newEntry) {
+      MenuEntries[idx] = newEntry;
+      return newEntry;
+    }
+    return NULL;
+  }
+}
+
+/* ------------ */
 
 void disp_init(Adafruit_SSD1306 *display) {
   display->begin(SSD1306_SWITCHCAPVCC, 0x3c, true);
