@@ -13,6 +13,27 @@
 #define SW_HELPER   14 //d5
 #define OLED_RESET -1
 
+#define ARROW_HEIGHT   16
+#define ARROW_WIDTH    16
+static const unsigned char PROGMEM arrow_back_bmp[] =
+{ B00000000, B00000000,
+  B00000000, B00010000,
+  B00000000, B00101000,
+  B00000000, B01000100,
+  B00000000, B11111110,
+  B00000000, B00010000,
+  B00000000, B00010000,
+  B00000000, B00010000,
+  B01111111, B11100000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000 };
+
+
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
 volatile int rotary_pos = 0;
@@ -58,7 +79,11 @@ typedef enum: uint8_t {
 class MenuEntry
 {
   public:
-    ~MenuEntry() =default;
+    ~MenuEntry() {
+      if (subitems != NULL){
+        delete subitems;
+      }
+    }
     MenuEntry() =delete;
     MenuEntry(const MenuEntry&) =delete;
     MenuEntry& operator=(const MenuEntry&) =delete;
@@ -68,7 +93,16 @@ class MenuEntry
     MenuEntry(String &entry);
   public:
     String Entry();
-    String Caption();
+    String Caption(){
+      return caption;
+    }
+    ENTRY_TYPE Kind(){
+      return kind;
+    }
+    uint8_t *Items(uint8_t &count){
+      count = subcount;
+      return subitems;
+    }
   private:
     uint8_t index;
     ENTRY_TYPE kind;
@@ -99,11 +133,27 @@ MenuEntry::MenuEntry(uint8_t i, ENTRY_TYPE t, String c):index(i), kind(t), capti
 
 MenuEntry::MenuEntry(uint8_t i, ENTRY_TYPE t, String c, uint8_t *subit, uint8_t subcnt):index(i), kind(t), caption(c), subitems(subit), subcount(subcnt) {
 }
-MenuEntry::MenuEntry(String &entry): index(0), kind(ET_CHOICE), caption("blah"), subitems(0), subcount(0){
-  //todo
-}
-String MenuEntry::Caption() {
-  return this->caption;
+MenuEntry::MenuEntry(String &entry){
+  int16_t from = 0, idx = 0, len = entry.length(), field = 0;
+  this->subcount = 0;
+  while(from<len){
+    idx = entry.indexOf(',', from);
+    String token = (idx>=0) ? entry.substring(from+1, idx) : entry.substring(from+1);
+    from = (idx>=0) ? idx : len;
+    if (field==0)
+      this->index = token.toInt();
+    if (field==1)
+      this->caption = token;
+    if (field==2)
+      this->kind = (ENTRY_TYPE)token.toInt();
+    if (field>2){
+      if (this->subcount==0)
+        this->subitems = new uint8_t[32];
+      this->subitems[subcount] = token.toInt();
+      this->subcount++;
+    }      
+    field++;
+  }
 }
 String MenuEntry::Entry() {
   return String("bah");
@@ -124,7 +174,8 @@ MenuEntry * getEntry(uint8_t idx) {
     return NULL;
   }
 }
-
+int current=0, option=0, opcnt=0;
+String options[32] = {};
 /* ------------ */
 
 void disp_init(Adafruit_SSD1306 *display) {
